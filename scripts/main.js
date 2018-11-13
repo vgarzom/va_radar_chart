@@ -35,44 +35,65 @@ h = 600;
 svg.style("font", "10px sans-serif")
     .style("width", "100%")
     .style("height", "auto");
-
-var lento_reduction = -848;
-var kasvis_reduction = -500;
-var auto_reduction = -398;
-var ekosähkö_reduction = -267;
-var ekolämmitys_reduction = -2445;
-
-var data = [
-    [//Finnish average
-        { axis: "Jätteet", value: Math.max(59, 0) },
-        { axis: "Liikenne", value: Math.max(2088, 0) },
-        { axis: "Ruoka", value: Math.max(1707, 0) },
-        { axis: "Kulutus", value: Math.max(2533, 0) },
-        { axis: "Asuminen", value: Math.max(3441, 0) },
-
-    ], [//reduced
-        { axis: "Jätteet", value: Math.max(59, 0) },
-        { axis: "Liikenne", value: Math.max(2088 + auto_reduction + lento_reduction, 0) },
-        { axis: "Ruoka", value: Math.max(1707 + kasvis_reduction, 0) },
-        { axis: "Kulutus", value: Math.max(2533, 0) },
-        { axis: "Asuminen", value: Math.max(3441 + ekosähkö_reduction + ekolämmitys_reduction, 0) },
-    ]
+var partidos = [
+    "CENTRO DEMOCRATICO (COLOMBIA)",
+    "PARTIDO CONSERVADOR COLOMBIANO",
+    "PARTIDO LIBERAL COLOMBIANO",
+    "PARTIDO SOCIAL DE UNIDAD NACIONAL PARTIDO DE LA U",
+    "PARTIDO OPCION CIUDADANA",
+    "PARTIDO CAMBIO RADICAL",
+    "POLO DEMOCRATICO ALTERNATIVO",
+    "PARTIDO VERDE",
+    "MOVIMIENTO INDEPENDIENTE DE RENOVACIÓN ABSOLUTA MIRA",
+    "ALIANZA SOCIAL INDEPENDIENTE ASI",
+    "AUTORIDADES INDIGENAS DE COLOMBIA AICO",
+    "MOVIMIENTO ALTERNATIVA INDIGENA SOCIAL MAIS",
+    "UNION PATRIOTICA UP",
+    "FUERZA ALTERNATIVA REVOLUCIONARIA DEL COMUN FARC",
+    "COLOMBIA JUSTA LIBRES CJL",
+    "VOTOS BLANCOS",
+    "VOTOS NO MARCADOS",
+    "VOTOS NULOS"
 ]
+var data = [
+    { name: "Senado", values: [], total: 0 },
+    { name: "Camara", values: [], total: 0 },
+    { name: "Alcaldía", values: [], total: 0 }
+];
+
+d3.csv("assets/data/2011/sen.csv", (d) => {
+    d.value = +d.value;
+    d.axis = d.axis.trim();
+    if (partidos.includes(d.axis)) {
+        data[0].values.push(d);
+        data[0].total += d.value;
+    }
+}).then(() => {
+    d3.csv("assets/data/2011/cam.csv", (d) => {
+        d.value = +d.value;
+        d.axis = d.axis.trim();
+        if (partidos.includes(d.axis)) {
+            data[1].values.push(d);
+            data[1].total += d.value;
+        }
+    }).then(() => {
+        d3.csv("assets/data/2011/alc.csv", (d) => {
+            d.value = +d.value;
+            d.axis = d.axis.trim();
+            if (partidos.includes(d.axis)) {
+                data[2].values.push(d);
+                data[2].total += d.value;
+            }
+        }).then(() => {
+            console.log(data);
+            controlsChanged();
+        })
+    })
+})
 
 var baseline_sum = 0;
-
-data[0].forEach(function (d) {
-    baseline_sum = baseline_sum + d.value
-})
-
 var reduced_sum = 0;
-
-data[1].forEach(function (d) {
-    reduced_sum = reduced_sum + d.value
-})
 
 function controlsChanged() {
     drawRadarChart(w, h, data);
 }
-
-controlsChanged();

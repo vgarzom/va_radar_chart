@@ -23,14 +23,13 @@ function RadarChart(id, data, options) {
         circlecolor: "#CDCDCD",     //Base color of circle	 
         strokeWidth: 2, 		     //The width of the stroke around each blob
         roundStrokes: false,	     //If true the area and stroke will follow a round path (cardinal-closed)
-        textColor: "black",	     // Default color of texts
+        textColor: "red",	     // Default color of texts
         valuelabelformat: ".2f",    // Default formatting of level values
         valuelabelsize: 10,	     // Default size of value labels (in pixels)
-        labelsize: 16,	     		 // Default size of labels (in pixels)	 
-        color: d3.scaleOrdinal(d3.schemeCategory10),	//Color function
+        labelsize: 8,	     		 // Default size of labels (in pixels)	 
         legednames: null,
-        legendoptions_xcorretion: 0,
-        legendoptions_ycorretion: 0,
+        legendoptions_xcorretion: -2000,
+        legendoptions_ycorretion: -10,
         legendoptions_legendtitle: "",
         legendoptions_legendsize: 2,
         legendoptions_ypadaftertitle: 20,
@@ -49,13 +48,23 @@ function RadarChart(id, data, options) {
     }//if
 
     //If the supplied maxValue is smaller than the actual one, replace by the max in the data
-    var maxValue = Math.max(cfg.maxValue, d3.max(data, function (i) { return d3.max(i.map(function (o) { return o.value; })) }));
+    var maxValue = Math.max(cfg.maxValue, d3.max(data, (d) => {
+        return d3.max(d.values, (v) => {
+            return v.value;
+        })
+    }));
 
-    var allAxis = (data[0].map(function (i, j) { return i.axis })),	//Names of each axis
-        total = allAxis.length,					//The number of different axes
+    var allAxis = [];
+    d3.map(
+        data[0].values,
+        (d) => { allAxis.push(d.axis) }
+    );	//Names of each axis
+    var total = allAxis.length,					//The number of different axes
         radius = Math.min(cfg.w / 2, cfg.h / 2), 	//Radius of the outermost circle
         Format = d3.format(cfg.valuelabelformat),		//Formatting for levels texts
         angleSlice = Math.PI * 2 / total;		//The width in radians of each "slice"
+
+    console.log("allaxis", allAxis);
 
     //Scale for the radius
     //var rScale = d3.scale.linear()
@@ -174,8 +183,8 @@ function RadarChart(id, data, options) {
     blobWrapper
         .append("path")
         .attr("class", "radarArea")
-        .attr("d", function (d, i) { return radarLine(d); })
-        .style("fill", function (d, i) { return cfg.color(i); })
+        .attr("d", function (d, i) { return radarLine(d.values); })
+        .style("fill", (d) => { return cfg.color(d.name); })
         .style("fill-opacity", cfg.opacityArea)
         .on('mouseover', function (d, i) {
             //Dim all blobs
@@ -197,22 +206,21 @@ function RadarChart(id, data, options) {
     //Create the outlines	
     blobWrapper.append("path")
         .attr("class", "radarStroke")
-        .attr("d", function (d, i) { return radarLine(d); })
+        .attr("d", function (d, i) { return radarLine(d.values); })
         .style("stroke-width", cfg.strokeWidth + "px")
-        .style("stroke", function (d, i) { return cfg.color(i); })
-        .style("fill", "none")
-        .style("filter", "url(#glow)");
+        .style("stroke", (d) => { return cfg.color(d.name) })
+        .style("fill", "none");
 
     //Append the circles
     blobWrapper.selectAll(".radarCircle")
-        .data(function (d, i) { return d; })
+        .data(function (d, i) { return d.values; })
         .enter().append("circle")
         .attr("class", "radarCircle")
         .attr("r", cfg.dotRadius)
         .attr("cx", function (d, i) { return rScale(d.value) * Math.cos(angleSlice * i - Math.PI / 2); })
         .attr("cy", function (d, i) { return rScale(d.value) * Math.sin(angleSlice * i - Math.PI / 2); })
         //.style("fill", function(d,i,j) { return cfg.color(j); }) // this does not work in v4...
-        .style("fill", function (d, i, j) { return "steelblue"; })
+        .style("fill", "gray")
         .style("fill-opacity", 0.8);
 
 
@@ -236,25 +244,25 @@ function RadarChart(id, data, options) {
             ;
         //Create colour squares
         legend.selectAll('rect')
-            .data(cfg.legednames)
+            .data(data)
             .enter()
             .append("rect")
             .attr("x", cfg.xpos + radius + cfg.legendoptions_xcorretion)
             .attr("y", function (d, i) { return cfg.ypos - radius + cfg.legendoptions_ycorretion + cfg.legendoptions_ypadaftertitle + i * cfg.legendoptions_ypadbetweenlines; })
             .attr("width", cfg.legendoptions_patchsquaresize)
             .attr("height", cfg.legendoptions_patchsquaresize)
-            .style("fill", function (d, i) { return cfg.color(i); })
+            .style("fill", (d) => { return cfg.color(d.name); })
             ;
         //Create text next to squares
         legend.selectAll('text')
-            .data(cfg.legednames)
+            .data(data)
             .enter()
             .append("text")
             .attr("x", cfg.xpos + radius + cfg.legendoptions_xcorretion + cfg.legendoptions_xpadafterpatch)
-            .attr("y", function (d, i) { return cfg.ypos - radius + cfg.legendoptions_ycorretion + cfg.legendoptions_ypadaftertitle + i * cfg.legendoptions_ypadbetweenlines + cfg.legendoptions_ypadposbetweenpatchandtext })
+            .attr("y", (d, i) => { return cfg.ypos - radius + cfg.legendoptions_ycorretion + cfg.legendoptions_ypadaftertitle + i * cfg.legendoptions_ypadbetweenlines + cfg.legendoptions_ypadposbetweenpatchandtext })
             .attr("font-size", cfg.legendoptions_legendsize + "px")
             .attr("fill", cfg.textColor)
-            .text(function (d) { return d; })
+            .text(function (d) { return d.name + ": " + d.total; })
             ;
     }//legendnames
 
@@ -272,7 +280,7 @@ function RadarChart(id, data, options) {
 
     //Append a set of invisible circles on top for the mouseover pop-up
     blobCircleWrapper.selectAll(".radarInvisibleCircle")
-        .data(function (d, i) { return d; })
+        .data(function (d, i) { return d.values; })
         .enter().append("circle")
         .attr("class", "radarInvisibleCircle")
         .attr("r", cfg.dotRadius * 1.5)
@@ -310,6 +318,7 @@ function RadarChart(id, data, options) {
 }//RadarChart
 
 function drawRadarChart(_w, _h, data) {
+    color = d3.scaleOrdinal(d3.schemeCategory10).domain(data.map(d => d.name))
     width = _w;
     height = _h;
     var plotxpos = (3 / 8) * width
@@ -317,7 +326,7 @@ function drawRadarChart(_w, _h, data) {
     var plotwidth = height - 150
     var plotheight = height - 150
 
-    var color = d3.scaleOrdinal([NQColors.purple, NQColors.red])
+    //var color = d3.scaleOrdinal([NQColors.purple, NQColors.red])
 
     var radarChartOptions = {
         xpos: plotxpos,
@@ -335,9 +344,9 @@ function drawRadarChart(_w, _h, data) {
         circlecolor: NQColors.light_grey,
         valuelabelformat: ".0f",
         valuelabelsize: 14,
-        labelsize: 16,
-        legednames: ['Keskiarvo: ' + baseline_sum, 'Vähennyksillä: ' + reduced_sum],
-        legendoptions_legendtitle: "Keskimääräiset CO2 päästöt yhteensä, kg.",
+        labelsize: 8,
+        legednames: ['Senado: ' + baseline_sum, 'Camara: ' + reduced_sum],
+        legendoptions_legendtitle: "",
         legendoptions_xcorretion: 0,
         legendoptions_legendsize: 16,
         legendoptions_ypadbetweenlines: 26,
